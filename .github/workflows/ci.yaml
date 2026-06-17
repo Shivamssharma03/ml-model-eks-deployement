@@ -77,7 +77,7 @@ jobs:
             TrainingImage=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-north-1.amazonaws.com/mlops/training:latest,TrainingInputMode=File \
             --input-data-config file://input-config.json \
             --output-data-config S3OutputPath=${{ secrets.MODEL_OUTPUT_S3 }} \
-            --resource-config InstanceType=ml.g5.xlarge,InstanceCount=1,VolumeSizeInGB=100 \
+            --resource-config InstanceType=ml.m5.xlarge,InstanceCount=1,VolumeSizeInGB=100 \
             --stopping-condition MaxRuntimeInSeconds=14400
 
       # Step 10
