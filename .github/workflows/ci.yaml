@@ -36,13 +36,13 @@ jobs:
       - name: Tag Docker Image
         run: |
           docker tag phi2-training:latest \
-          ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/phi2-training:latest
+          ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-north-1.amazonaws.com/mlops/training:latest
 
       # Step 6
       - name: Push Docker Image
         run: |
           docker push \
-          ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/phi2-training:latest
+          ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-north-1.amazonaws.com/mlops/training:latest
 
       # Step 7
       - name: Create SageMaker Input Config
@@ -74,7 +74,7 @@ jobs:
             --training-job-name ${JOB_NAME} \
             --role-arn ${{ secrets.SAGEMAKER_ROLE_ARN }} \
             --algorithm-specification \
-            TrainingImage=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/phi2-training:latest,TrainingInputMode=File \
+            TrainingImage=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-north-1.amazonaws.com/mlops/training:latest,TrainingInputMode=File \
             --input-data-config file://input-config.json \
             --output-data-config S3OutputPath=${{ secrets.MODEL_OUTPUT_S3 }} \
             --resource-config InstanceType=ml.g5.xlarge,InstanceCount=1,VolumeSizeInGB=100 \
