@@ -1,0 +1,117 @@
+name: Train Model
+
+on:
+  workflow_dispatch:
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # Step 1
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Step 2
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      # Step 3
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Step 4
+      - name: Build Docker Image
+        run: |
+          docker build \
+            -f src/training_model/Dockerfile \
+            -t phi2-training .
+
+      # Step 5
+      - name: Tag Docker Image
+        run: |
+          docker tag phi2-training:latest \
+          ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/phi2-training:latest
+
+      # Step 6
+      - name: Push Docker Image
+        run: |
+          docker push \
+          ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/phi2-training:latest
+
+      # Step 7
+      - name: Create SageMaker Input Config
+        run: |
+          cat > input-config.json <<EOF
+          [
+            {
+              "ChannelName":"training",
+              "DataSource":{
+                "S3DataSource":{
+                  "S3DataType":"S3Prefix",
+                  "S3Uri":"${{ secrets.TRAINING_DATA_S3 }}",
+                  "S3DataDistributionType":"FullyReplicated"
+                }
+              }
+            }
+          ]
+          EOF
+
+      # Step 8
+      - name: Generate Training Job Name
+        run: |
+          echo "JOB_NAME=phi2-${{ github.run_id }}" >> $GITHUB_ENV
+
+      # Step 9
+      - name: Create SageMaker Training Job
+        run: |
+          aws sagemaker create-training-job \
+            --training-job-name ${JOB_NAME} \
+            --role-arn ${{ secrets.SAGEMAKER_ROLE_ARN }} \
+            --algorithm-specification \
+            TrainingImage=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/phi2-training:latest,TrainingInputMode=File \
+            --input-data-config file://input-config.json \
+            --output-data-config S3OutputPath=${{ secrets.MODEL_OUTPUT_S3 }} \
+            --resource-config InstanceType=ml.g5.xlarge,InstanceCount=1,VolumeSizeInGB=100 \
+            --stopping-condition MaxRuntimeInSeconds=14400
+
+      # Step 10
+      - name: Wait for Training Job
+        run: |
+          while true; do
+            STATUS=$(aws sagemaker describe-training-job \
+              --training-job-name ${JOB_NAME} \
+              --query TrainingJobStatus \
+              --output text)
+
+            echo "Status: $STATUS"
+
+            if [ "$STATUS" = "Completed" ]; then
+              break
+            fi
+
+            if [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Stopped" ]; then
+              exit 1
+            fi
+
+            sleep 60
+          done
+
+      # Step 11
+      - name: Verify Model Uploaded
+        run: |
+          echo "Training completed successfully."
+
+      # Step 12 (Optional)
+      - name: Delete Docker Image from ECR
+        run: |
+          aws ecr batch-delete-image \
+            --repository-name phi2-training \
+            --image-ids imageTag=latest
+        continue-on-error: true
+

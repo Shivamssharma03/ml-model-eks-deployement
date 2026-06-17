@@ -1,0 +1,6 @@
+outs:
+- md5: 4e405f27e498ccb10377736ad4db08ab.dir
+  size: 546
+  nfiles: 1
+  hash: md5
+  path: Data-se
