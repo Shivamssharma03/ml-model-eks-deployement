@@ -4,7 +4,7 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /opt/program
 
-COPY src/training_model/requirements.txt .
+COPY src/training-model/requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
