@@ -12,4 +12,4 @@ COPY . .
 
 ENV PYTHONPATH=/opt/program
 
-CMD ["python","src/training_model/train.py"]
+CMD ["python","src/training-model/train.py"]
